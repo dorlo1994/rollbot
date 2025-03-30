@@ -1,10 +1,8 @@
 import discord
 import logging
 
-DEFAULT_PREFIX = '~'
 
-
-def _initialize_logger():
+def initialize_logger():
     logger = logging.getLogger('rollbot')
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(levelname)s : %(name)s : %(message)s')
@@ -17,10 +15,13 @@ def _initialize_logger():
 
 
 class DiscordBot:
+
+    DEFAULT_PREFIX = '~'
+
     def __init__(self):
-        self._prefix = DEFAULT_PREFIX
+        self._prefix = self.DEFAULT_PREFIX
         self._servers = dict()
-        self._logger = _initialize_logger()
+        self._logger = initialize_logger()
         self._initialize_client()
 
     def _initialize_client(self):
