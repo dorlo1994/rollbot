@@ -1,10 +1,11 @@
-from discord_bot import initialize_bot
+from discord_bot import DiscordBot
 
 
 def main():
     with open("../token.txt", "r") as f:
         token = f.readlines()[0]
-    initialize_bot(token=token, prefix='~')
+    bot = DiscordBot()
+    bot.run(token=token)
 
 
 if __name__ == "__main__":

@@ -1,22 +1,49 @@
 import discord
+import logging
+
+DEFAULT_PREFIX = '~'
 
 
-def initialize_bot(token: str, prefix: str):
-    intents = discord.Intents.default()
-    intents.message_content = True
+def _initialize_logger():
+    logger = logging.getLogger('rollbot')
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s : %(name)s : %(message)s')
 
-    client = discord.Client(intents=intents)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
-    @client.event
-    async def on_ready():
-        # Todo: logging!
-        print(f'Bot logged in as {client.user}')
+    return logger
 
-    @client.event
-    async def on_message(message):
-        if message.author == client.user:
-            return
-        if message.content.startswith(prefix):
-            await message.channel.send(f'Hi there, {message.author}!')
 
-    client.run(token)
+class DiscordBot:
+    def __init__(self):
+        self._prefix = DEFAULT_PREFIX
+        self._servers = dict()
+        self._logger = _initialize_logger()
+        self._initialize_client()
+
+    def _initialize_client(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+
+        client = discord.Client(intents=intents)
+
+        @client.event
+        async def on_ready():
+            self._logger.info(f'Bot logged in as {client.user}')
+
+        @client.event
+        async def on_message(message):
+            if message.author == client.user:
+                return
+            if message.content.startswith(self._prefix):
+                self._handle_message(message)
+
+        self._client = client
+
+    def _handle_message(self, message):
+        ...
+
+    def run(self, token):
+        self._client.run(token)
