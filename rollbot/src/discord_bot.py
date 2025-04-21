@@ -45,8 +45,7 @@ class DiscordBot:
 
     async def _handle_message(self, message):
         message_metadata = message.to_message_reference_dict()
-        guild_id = message_metadata['guild_id']
-        channel_id = message_metadata['channel_id']
+        guild_id, channel_id = message_metadata['guild_id'], message_metadata['channel_id']
         if guild_id not in self._guilds.keys():
             # Handle joining a guild
             self.join_guild(guild_id, channel_id)
@@ -57,12 +56,13 @@ class DiscordBot:
         # Handle message
         channel_settings = self._guilds[guild_id][channel_id]
         if message.content.startswith(channel_settings['prefix']):
-            await message.channel.send(f'This is a {channel_settings['system']} channel! Let\'s try a check: {channel_settings['system'].check()}')
+            await message.channel.send(f'This is a {channel_settings['system']} channel! Let\'s try a check:'
+                                       f' {channel_settings['system'].check()}')
 
     def join_guild(self, guild_id, channel_id):
         self._logger.info(f'Added to new guild with id {guild_id}')
         self._guilds[guild_id] = dict()
-        self._guilds[guild_id][channel_id] = self._default_settings()
+        self.join_channel(guild_id, channel_id)
 
     def join_channel(self, guild_id, channel_id):
         self._logger.info(f'Entered a new channel in guild {guild_id} with id {channel_id}')
@@ -72,6 +72,7 @@ class DiscordBot:
         settings = dict()
         settings['prefix'] = self.DEFAULT_PREFIX
         settings['system'] = Dnd5e()
+        settings['characters'] = dict()
         return settings
 
     def run(self, token):
