@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from enum import Enum
+from collections import namedtuple
+
+
+Die = namedtuple('Die', ['min', 'max'])
 
 
 class CharacterSheet(ABC):
