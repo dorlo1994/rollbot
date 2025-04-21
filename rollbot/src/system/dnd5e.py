@@ -1,7 +1,5 @@
-from rollbot.src.system.system_base import CharacterSheet, RolePlayingSystem, Die
-from random import randint
+from rollbot.src.system.system_base import CharacterSheet, RolePlayingSystem, Die, roll_die
 from enum import Enum
-
 
 # Define the Die struct and dice used in DnD
 d4 = Die(1, 4)
@@ -24,11 +22,11 @@ class Dnd5ECharacterSheet(CharacterSheet):
 
 
 class Dnd5e(RolePlayingSystem):
-    def check(self, stat: int, check_mod: Dnd5eCheckMod) -> int:
-        roll = self.roll_die(d20) + stat
-        if not check_mod:
+    def check(self, stat: int = 0, check_mod: Dnd5eCheckMod = Dnd5eCheckMod.NONE) -> int:
+        roll = roll_die(d20) + stat
+        if check_mod == Dnd5eCheckMod.NONE:
             return roll
-        alt_roll = self.roll_die(d20) + stat
+        alt_roll = roll_die(d20) + stat
         if check_mod == Dnd5eCheckMod.ADVANTAGE:
             return max(roll, alt_roll)
         elif check_mod == Dnd5eCheckMod.DISADVANTAGE:
@@ -37,12 +35,11 @@ class Dnd5e(RolePlayingSystem):
             raise ValueError(f'Unknown roll modifier {check_mod}')
 
     @staticmethod
-    def roll_die(die: Die) -> int:
-        return randint(*die)
-
-    @staticmethod
     def roll(desc: str) -> int:
         ...
 
     def character_sheet(self) -> Dnd5ECharacterSheet:
         ...
+
+    def __str__(self) -> str:
+        return 'Dungeons and Dragons 5th Edition'

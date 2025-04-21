@@ -1,8 +1,13 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from random import randint
 
 
 Die = namedtuple('Die', ['min', 'max'])
+
+
+def roll_die(die: Die) -> int:
+    return randint(*die)
 
 
 class CharacterSheet(ABC):
@@ -22,4 +27,8 @@ class RolePlayingSystem(ABC):
 
     @abstractmethod
     def check(self, *args):
+        ...
+
+    @abstractmethod
+    def __str__(self) -> str:
         ...
