@@ -1,5 +1,9 @@
 from rollbot.src.system.system_base import CharacterSheet, RolePlayingSystem, Die, roll_die
-from enum import Enum
+from enum import Enum, Flag, auto
+
+############################################
+# CONSTANTS
+############################################
 
 # Define the Die struct and dice used in DnD
 d4 = Die(1, 4)
@@ -11,10 +15,42 @@ d12 = Die(1, 12)
 d20 = Die(1, 20)
 
 
+class SkillModifier(Flag):
+    PROFICIENCY = auto()
+    EXPERTISE = auto()
+
+
 class Dnd5eCheckMod(Enum):
     NONE = 0
     ADVANTAGE = 1
     DISADVANTAGE = 2
+
+############################################
+# UTILITY CLASSES
+############################################
+
+
+class Stat:
+    def __init__(self, score: int):
+        self.score = score
+
+    @property
+    def modifier(self) -> int:
+        return int((self.score - 10) / 2)
+
+
+class Skill:
+    def __init__(self, stat: Stat, modifier: SkillModifier):
+        self.stat = stat
+        self.modifier = modifier
+
+    def score(self, prof_bonus: int) -> int:
+        prof_multiplier = 0
+        if SkillModifier.PROFICIENCY in self.modifier:
+            prof_multiplier += 1
+            if SkillModifier.EXPERTISE in self.modifier:
+                prof_multiplier += 1
+        return self.stat.modifier + (prof_bonus * prof_multiplier)
 
 
 class Dnd5ECharacterSheet(CharacterSheet):

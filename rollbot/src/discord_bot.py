@@ -59,6 +59,8 @@ class DiscordBot:
     async def _handle_message(self, message):
         message_metadata = message.to_message_reference_dict()
         guild_id, channel_id = message_metadata['guild_id'], message_metadata['channel_id']
+
+        # Ensure the message comes from a known channel
         if guild_id not in self._guilds.keys():
             # Handle joining a guild
             self.join_guild(guild_id, channel_id)
@@ -73,7 +75,7 @@ class DiscordBot:
             command_key = parsed_message.pop(0)
             command = self._commands.get(command_key)
             if not command:
-                raise ValueError(f'Unknown command {command_key}')
+                raise ValueError(f'Unknown command \"{command_key}\"')
             await command.function(guild_id, channel_id, parsed_message, message)
 
     def join_guild(self, guild_id, channel_id):
