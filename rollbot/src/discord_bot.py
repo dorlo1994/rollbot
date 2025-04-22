@@ -48,7 +48,11 @@ class DiscordBot:
         async def on_message(message):
             if message.author == client.user:
                 return
-            await self._handle_message(message)
+            try:
+                await self._handle_message(message)
+            except ValueError as e:
+                self._logger.info(f'Couldn\'t handle message {message.content}: {e}')
+                await message.channel.send(f'Sorry, ran into an error: {e}')
 
         self._client = client
 
@@ -65,9 +69,12 @@ class DiscordBot:
         # Handle message
         channel_settings = self._guilds[guild_id][channel_id]
         if message.content.startswith(channel_settings['prefix']):
-            parsed_message = message.content[1:].split(' ')
-            command = parsed_message.pop(0)
-            await self._commands[command].function(guild_id, channel_id, parsed_message, message)
+            parsed_message = message.content[len(channel_settings['prefix']):].split(' ')
+            command_key = parsed_message.pop(0)
+            command = self._commands.get(command_key)
+            if not command:
+                raise ValueError(f'Unknown command {command_key}')
+            await command.function(guild_id, channel_id, parsed_message, message)
 
     def join_guild(self, guild_id, channel_id):
         self._logger.info(f'Entered new guild with id {guild_id}')
@@ -91,6 +98,7 @@ class DiscordBot:
     async def set_prefix(self, guild_id, channel_id, parsed_message: list[str], message):
         self._logger.info(f'Changing prefix of channel {channel_id} in guild {guild_id} to {parsed_message[0]}')
         self._guilds[guild_id][channel_id]['prefix'] = parsed_message[0]
+        await message.channel.send(f'Changed prefix to {parsed_message[0]}')
 
     async def help_str(self, guild_id, channel_id, parsed_message, message):
         help_str = "List of available commands:\n"
