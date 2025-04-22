@@ -1,7 +1,11 @@
 from rollbot.src.system.dnd5e import Dnd5e
+from collections import namedtuple
 
 import discord
 import logging
+
+
+Command = namedtuple('Command', ['description', 'function'])
 
 
 def initialize_logger():
@@ -23,6 +27,11 @@ class DiscordBot:
     def __init__(self):
         self._guilds = dict()
         self._logger = initialize_logger()
+        self._commands = {
+            'prefix': Command(f'Changes rollbot\'s assigned prefix. default is {self.DEFAULT_PREFIX}', self.set_prefix),
+            'help': Command('Get available commands.', self.help_str),
+            'system': None
+        }
         self._initialize_client()
 
     def _initialize_client(self):
@@ -56,16 +65,17 @@ class DiscordBot:
         # Handle message
         channel_settings = self._guilds[guild_id][channel_id]
         if message.content.startswith(channel_settings['prefix']):
-            await message.channel.send(f'This is a {channel_settings['system']} channel! Let\'s try a check:'
-                                       f' {channel_settings['system'].check()}')
+            parsed_message = message.content[1:].split(' ')
+            command = parsed_message.pop(0)
+            await self._commands[command].function(guild_id, channel_id, parsed_message, message)
 
     def join_guild(self, guild_id, channel_id):
-        self._logger.info(f'Added to new guild with id {guild_id}')
+        self._logger.info(f'Entered new guild with id {guild_id}')
         self._guilds[guild_id] = dict()
         self.join_channel(guild_id, channel_id)
 
     def join_channel(self, guild_id, channel_id):
-        self._logger.info(f'Entered a new channel in guild {guild_id} with id {channel_id}')
+        self._logger.info(f'Entered new channel in guild {guild_id} with id {channel_id}')
         self._guilds[guild_id][channel_id] = self._default_settings()
 
     def _default_settings(self) -> dict:
@@ -77,3 +87,14 @@ class DiscordBot:
 
     def run(self, token):
         self._client.run(token)
+
+    async def set_prefix(self, guild_id, channel_id, parsed_message: list[str], message):
+        self._logger.info(f'Changing prefix of channel {channel_id} in guild {guild_id} to {parsed_message[0]}')
+        self._guilds[guild_id][channel_id]['prefix'] = parsed_message[0]
+
+    async def help_str(self, guild_id, channel_id, parsed_message, message):
+        help_str = "List of available commands:\n"
+        for command, details in self._commands.items():
+            if details:
+                help_str += f'{command}: {details.description}\n'
+        await message.channel.send(help_str)
