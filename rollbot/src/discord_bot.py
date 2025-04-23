@@ -1,3 +1,4 @@
+from rollbot.src.system.system_base import RolePlayingSystem
 from rollbot.src.system.dnd5e import Dnd5e
 from collections import namedtuple
 
@@ -20,15 +21,30 @@ def initialize_logger():
     return logger
 
 
-class DiscordBot:
+class Channel:
 
     DEFAULT_PREFIX = '~'
+    DEFAULT_SYSTEM = Dnd5e
 
+    def __init__(self, prefix: str, system: RolePlayingSystem):
+        self.prefix = prefix
+        self.system = system
+        self.characters = dict()
+
+    @staticmethod
+    def default_channel() -> __class__:
+        default = Channel(Channel.DEFAULT_PREFIX,
+                          Channel.DEFAULT_SYSTEM()
+                          )
+        return default
+
+
+class DiscordBot:
     def __init__(self):
         self._guilds = dict()
         self._logger = initialize_logger()
         self._commands = {
-            'prefix': Command(f'Changes rollbot\'s assigned prefix. default is {self.DEFAULT_PREFIX}', self.set_prefix),
+            'prefix': Command(f'Changes assigned prefix. default is {Channel.DEFAULT_PREFIX}.', self.set_prefix),
             'help': Command('Get available commands.', self.help_str),
             'system': None
         }
@@ -70,8 +86,8 @@ class DiscordBot:
 
         # Handle message
         channel_settings = self._guilds[guild_id][channel_id]
-        if message.content.startswith(channel_settings['prefix']):
-            parsed_message = message.content[len(channel_settings['prefix']):].split(' ')
+        if message.content.startswith(channel_settings.prefix):
+            parsed_message = message.content[len(channel_settings.prefix):].split(' ')
             command_key = parsed_message.pop(0)
             command = self._commands.get(command_key)
             if not command:
@@ -85,21 +101,14 @@ class DiscordBot:
 
     def join_channel(self, guild_id, channel_id):
         self._logger.info(f'Entered new channel in guild {guild_id} with id {channel_id}')
-        self._guilds[guild_id][channel_id] = self._default_settings()
-
-    def _default_settings(self) -> dict:
-        settings = dict()
-        settings['prefix'] = self.DEFAULT_PREFIX
-        settings['system'] = Dnd5e()
-        settings['characters'] = dict()
-        return settings
+        self._guilds[guild_id][channel_id] = Channel.default_channel()
 
     def run(self, token):
         self._client.run(token)
 
     async def set_prefix(self, guild_id, channel_id, parsed_message: list[str], message):
         self._logger.info(f'Changing prefix of channel {channel_id} in guild {guild_id} to {parsed_message[0]}')
-        self._guilds[guild_id][channel_id]['prefix'] = parsed_message[0]
+        self._guilds[guild_id][channel_id].prefix = parsed_message[0]
         await message.channel.send(f'Changed prefix to {parsed_message[0]}')
 
     async def help_str(self, guild_id, channel_id, parsed_message, message):
