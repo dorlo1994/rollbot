@@ -1,5 +1,3 @@
-from discord.app_commands import guilds
-
 from rollbot.src.system.system_base import RolePlayingSystem
 from rollbot.src.system.dnd5e import Dnd5e
 from collections import namedtuple
@@ -30,11 +28,11 @@ class Channel:
     DEFAULT_PREFIX = '~'
     DEFAULT_SYSTEM = Dnd5e
 
-    def __init__(self, channel: discord.PartialMessageable, prefix: str, system: RolePlayingSystem, guild_id, channel_id):
+    def __init__(self, channel: discord.TextChannel, prefix: str, system: RolePlayingSystem, guild_id: int, channel_id: int):
         self._channel = channel
-        self.prefix: str = prefix
-        self.system: RolePlayingSystem = system
-        self.characters: dict = dict()
+        self.prefix = prefix
+        self.system = system
+        self.characters = dict()
         self._guild_id = guild_id
         self._channel_id = channel_id
 
@@ -49,7 +47,7 @@ class Channel:
         return default
 
     def __repr__(self):
-        return f'Channel {self._channel_id} in guild {self._guild_id}'
+        return f'Channel {self._channel.name} in guild {self._channel.guild.name}'
 
     def send(self, *args, **kwargs):
         return self._channel.send(*args, **kwargs)
@@ -130,7 +128,7 @@ class DiscordBot:
         channel_settings.prefix = prefix
         await channel_settings.send(f'Changed prefix to {prefix}')
 
-    async def help_str(self, channel_settings, parsed_message):
+    async def help_str(self, channel_settings, _):
         help_str = "List of available commands:\n"
         for command, details in self._commands.items():
             if details:
