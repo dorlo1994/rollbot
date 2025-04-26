@@ -65,6 +65,10 @@ class DiscordBot:
         self._initialize_client()
 
     def _initialize_client(self):
+        """
+        Initializes a discord bot and defines its events.
+        See discord.py
+        """
         intents = discord.Intents.default()
         intents.message_content = True
 
@@ -86,7 +90,10 @@ class DiscordBot:
 
         self._client = client
 
-    async def _handle_message(self, message):
+    async def _handle_message(self, message: discord.Message):
+        """
+        Handles every received message.
+        """
         message_metadata = message.to_message_reference_dict()
         guild_id, channel_id = message_metadata['guild_id'], message_metadata['channel_id']
 
@@ -100,37 +107,55 @@ class DiscordBot:
             channel_obj = message.channel
             self.join_channel(guild_id, channel_id, channel_obj)
 
-        # Handle message
+        # If message is not a rollbot command, stop message handling.
         channel_settings = self._guilds[guild_id][channel_id]
-        if message.content.startswith(channel_settings.prefix):
-            parsed_message = message.content[len(channel_settings.prefix):].split(' ')
-            command_key = parsed_message.pop(0)
-            command = self._commands.get(command_key)
-            if not command:
-                raise ValueError(f'Unknown command \"{command_key}\"')
-            await command.function(channel_settings, parsed_message)
+        if not message.content.startswith(channel_settings.prefix):
+            return
 
-    def join_guild(self, guild_id, channel_id, channel):
+        # Handle message
+        parsed_message = message.content[len(channel_settings.prefix):].split(' ')
+        command_key = parsed_message.pop(0)
+        command = self._commands.get(command_key)
+        if not command:
+            raise ValueError(f'Unknown command \"{command_key}\"')
+        await command.function(channel_settings, parsed_message)
+
+    def join_guild(self, guild_id: int, channel_id: int, channel: discord.TextChannel):
+        """
+        Adds a guild to the list of known guilds, as well as adding a channel.
+        """
         self._guilds[guild_id] = dict()
         self._logger.info(f'Entered new guild with id {guild_id}')
         self.join_channel(guild_id, channel_id, channel)
 
-    def join_channel(self, guild_id, channel_id, channel):
+    def join_channel(self, guild_id: int, channel_id: int, channel: discord.TextChannel):
+        """
+        Initializes the default settings for a new channel.
+        """
         self._guilds[guild_id][channel_id] = Channel.default_channel(guild_id, channel_id, channel)
         self._logger.info(f'Entered new channel in guild {guild_id} with id {channel_id}')
 
     def run(self, token):
+        """
+        Logs rollbot in.
+        """
         self._client.run(token)
 
     async def set_prefix(self, channel_settings: Channel, parsed_message: list[str]):
+        """
+        Changes the message prefix for the given channel.
+        """
         prefix = parsed_message[0]
         self._logger.info(f'Changing prefix of {channel_settings} to {prefix}')
         channel_settings.prefix = prefix
         await channel_settings.send(f'Changed prefix to {prefix}')
 
-    async def help_str(self, channel_settings, _):
+    async def help_str(self, channel_settings: Channel, _):
+        """
+        Sends a help message to the requesting channel, containing a list of commands.
+        """
         help_str = "List of available commands:\n"
-        for command, details in self._commands.items():
-            if details:
-                help_str += f'{command}: {details.description}\n'
+        for command, function in self._commands.items():
+            if function:
+                help_str += f'{command}: {function.description}\n'
         await channel_settings.send(help_str)
