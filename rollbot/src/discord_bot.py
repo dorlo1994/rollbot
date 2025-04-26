@@ -22,7 +22,9 @@ def initialize_logger():
 
 
 class Channel:
-
+    """
+    Encapsulates information on a given discord channel.
+    """
     DEFAULT_PREFIX = '~'
     DEFAULT_SYSTEM = Dnd5e
 
