@@ -1,3 +1,5 @@
+from discord.app_commands import guilds
+
 from rollbot.src.system.system_base import RolePlayingSystem
 from rollbot.src.system.dnd5e import Dnd5e
 from collections import namedtuple
@@ -28,17 +30,29 @@ class Channel:
     DEFAULT_PREFIX = '~'
     DEFAULT_SYSTEM = Dnd5e
 
-    def __init__(self, prefix: str, system: RolePlayingSystem):
+    def __init__(self, channel: discord.PartialMessageable, prefix: str, system: RolePlayingSystem, guild_id, channel_id):
+        self._channel = channel
         self.prefix: str = prefix
         self.system: RolePlayingSystem = system
         self.characters: dict = dict()
+        self._guild_id = guild_id
+        self._channel_id = channel_id
 
     @staticmethod
-    def default_channel():
-        default = Channel(Channel.DEFAULT_PREFIX,
-                          Channel.DEFAULT_SYSTEM()
+    def default_channel(guild_id, channel_id, channel):
+        default = Channel(channel,
+                          Channel.DEFAULT_PREFIX,
+                          Channel.DEFAULT_SYSTEM(),
+                          guild_id,
+                          channel_id
                           )
         return default
+
+    def __repr__(self):
+        return f'Channel {self._channel_id} in guild {self._guild_id}'
+
+    def send(self, *args, **kwargs):
+        return self._channel.send(*args, **kwargs)
 
 
 class DiscordBot:
@@ -81,10 +95,12 @@ class DiscordBot:
         # Ensure the message comes from a known channel
         if guild_id not in self._guilds.keys():
             # Handle joining a guild
-            self.join_guild(guild_id, channel_id)
+            channel_obj = message.channel
+            self.join_guild(guild_id, channel_id, channel_obj)
         elif channel_id not in self._guilds[guild_id].keys():
             # Handle joining a new channel in an existing server
-            self.join_channel(guild_id, channel_id)
+            channel_obj = message.channel
+            self.join_channel(guild_id, channel_id, channel_obj)
 
         # Handle message
         channel_settings = self._guilds[guild_id][channel_id]
@@ -94,28 +110,29 @@ class DiscordBot:
             command = self._commands.get(command_key)
             if not command:
                 raise ValueError(f'Unknown command \"{command_key}\"')
-            await command.function(guild_id, channel_id, parsed_message, message)
+            await command.function(channel_settings, parsed_message)
 
-    def join_guild(self, guild_id, channel_id):
-        self._logger.info(f'Entered new guild with id {guild_id}')
+    def join_guild(self, guild_id, channel_id, channel):
         self._guilds[guild_id] = dict()
-        self.join_channel(guild_id, channel_id)
+        self._logger.info(f'Entered new guild with id {guild_id}')
+        self.join_channel(guild_id, channel_id, channel)
 
-    def join_channel(self, guild_id, channel_id):
+    def join_channel(self, guild_id, channel_id, channel):
+        self._guilds[guild_id][channel_id] = Channel.default_channel(guild_id, channel_id, channel)
         self._logger.info(f'Entered new channel in guild {guild_id} with id {channel_id}')
-        self._guilds[guild_id][channel_id] = Channel.default_channel()
 
     def run(self, token):
         self._client.run(token)
 
-    async def set_prefix(self, guild_id, channel_id, parsed_message: list[str], message):
-        self._logger.info(f'Changing prefix of channel {channel_id} in guild {guild_id} to {parsed_message[0]}')
-        self._guilds[guild_id][channel_id].prefix = parsed_message[0]
-        await message.channel.send(f'Changed prefix to {parsed_message[0]}')
+    async def set_prefix(self, channel_settings: Channel, parsed_message: list[str]):
+        prefix = parsed_message[0]
+        self._logger.info(f'Changing prefix of {channel_settings} to {prefix}')
+        channel_settings.prefix = prefix
+        await channel_settings.send(f'Changed prefix to {prefix}')
 
-    async def help_str(self, guild_id, channel_id, parsed_message, message):
+    async def help_str(self, channel_settings, parsed_message):
         help_str = "List of available commands:\n"
         for command, details in self._commands.items():
             if details:
                 help_str += f'{command}: {details.description}\n'
-        await message.channel.send(help_str)
+        await channel_settings.send(help_str)
