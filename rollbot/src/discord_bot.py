@@ -27,12 +27,12 @@ class Channel:
     DEFAULT_SYSTEM = Dnd5e
 
     def __init__(self, prefix: str, system: RolePlayingSystem):
-        self.prefix = prefix
-        self.system = system
-        self.characters = dict()
+        self.prefix: str = prefix
+        self.system: RolePlayingSystem = system
+        self.characters: dict = dict()
 
     @staticmethod
-    def default_channel() -> __class__:
+    def default_channel():
         default = Channel(Channel.DEFAULT_PREFIX,
                           Channel.DEFAULT_SYSTEM()
                           )
@@ -41,9 +41,9 @@ class Channel:
 
 class DiscordBot:
     def __init__(self):
-        self._guilds = dict()
+        self._guilds: dict[str: dict[str: Channel]] = dict()
         self._logger = initialize_logger()
-        self._commands = {
+        self._commands: dict[str: Command] = {
             'prefix': Command(f'Changes assigned prefix. default is {Channel.DEFAULT_PREFIX}.', self.set_prefix),
             'help': Command('Get available commands.', self.help_str),
             'system': None
