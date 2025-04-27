@@ -63,7 +63,8 @@ class DiscordBot:
             'prefix': Command(f'Changes assigned prefix. default is {Channel.DEFAULT_PREFIX}.', self.set_prefix),
             'help': Command('Get available commands.', self.help_str),
             'system': Command(f'Set the roleplaying system for this channel. Available systems are: {"\n\t".join(SYSTEMS.keys())}', self.set_system),
-            'character': Command('Create character sheet', self.character)
+            'character': Command('Create character sheet', self.character),
+            'my_character': Command('Print your character sheet', self.my_character),
         }
         self._initialize_client()
 
@@ -175,6 +176,10 @@ class DiscordBot:
         channel_settings.characters[author] = channel_settings.system.character_sheet(parsed_message)
         self._logger.info(f'Created character for {author}.')
         await channel_settings.send(f'{author}, your character is {channel_settings.characters[author].name}')
+
+    async def my_character(self, channel_settings: Channel, parsed_message: list[str], author: str):
+        character = channel_settings.characters[author]
+        await channel_settings.send(character)
 
     async def help_str(self, channel_settings: Channel, *_):
         """

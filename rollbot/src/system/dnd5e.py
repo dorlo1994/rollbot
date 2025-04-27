@@ -93,7 +93,15 @@ class Dnd5ECharacterSheet(CharacterSheet):
     def proficiency_modifier(self):
         return 2 + (self.level - 1) // 4
 
+    def __repr__(self):
+        character_str: str = ''
+        character_str += f'Name: {self.name}\n'
+        character_str += f'Level: {self.level}\n'
+        character_str += f'Stats: {'\t\n'.join([f'{stat}: {s.score}' for stat, s in self._stats.items()])}'
+        return character_str
+
 class Dnd5e(RolePlayingSystem):
+    EXP = 'EXPERTISE'
     def check(self, stat: int = 0, check_mod: Dnd5eCheckMod = Dnd5eCheckMod.NONE) -> int:
         roll = roll_die(d20) + stat
         if check_mod == Dnd5eCheckMod.NONE:
@@ -114,8 +122,11 @@ class Dnd5e(RolePlayingSystem):
         name = args_list.pop(0)
         level = int(args_list.pop(0))
         stats = [int(stat) for stat in args_list[0:len(STATS)]]
-        proficiencies = [prof for prof in args_list[len(STATS): args_list.index('EXPERTISE') if 'EXPERTISE' in args_list else len(args_list)]]
-        return Dnd5ECharacterSheet(name, level, stats, proficiencies)
+        proficiencies = [prof for prof in args_list[len(STATS): args_list.index(self.EXP) if self.EXP in args_list else len(args_list)]]
+        expertise = None
+        if self.EXP in args_list:
+            expertise = args_list[args_list.index(self.EXP)+1:]
+        return Dnd5ECharacterSheet(name, level, stats, proficiencies, expertise)
 
     def __str__(self) -> str:
         return 'Dungeons and Dragons 5th Edition'
