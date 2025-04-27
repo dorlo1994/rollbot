@@ -8,6 +8,8 @@ import logging
 
 Command = namedtuple('Command', ['description', 'function'])
 
+SYSTEMS = {'Dnd5e': Dnd5e}
+
 
 def initialize_logger():
     logger = logging.getLogger('rollbot')
@@ -26,7 +28,7 @@ class Channel:
     Encapsulates information on a given discord channel.
     """
     DEFAULT_PREFIX = '~'
-    DEFAULT_SYSTEM = Dnd5e
+    DEFAULT_SYSTEM = None
 
     def __init__(self, channel: discord.TextChannel, prefix: str, system: RolePlayingSystem, guild_id: int, channel_id: int):
         self._channel = channel
@@ -40,7 +42,7 @@ class Channel:
     def default_channel(guild_id, channel_id, channel):
         default = Channel(channel,
                           Channel.DEFAULT_PREFIX,
-                          Channel.DEFAULT_SYSTEM(),
+                          Channel.DEFAULT_SYSTEM,
                           guild_id,
                           channel_id
                           )
@@ -60,7 +62,8 @@ class DiscordBot:
         self._commands: dict[str: Command] = {
             'prefix': Command(f'Changes assigned prefix. default is {Channel.DEFAULT_PREFIX}.', self.set_prefix),
             'help': Command('Get available commands.', self.help_str),
-            'system': None
+            'system': Command(f'Set the roleplaying system for this channel. Available systems are: {"\n\t".join(SYSTEMS.keys())}', self.set_system),
+            'character': Command('Create character sheet', self.character)
         }
         self._initialize_client()
 
@@ -114,11 +117,12 @@ class DiscordBot:
 
         # Handle message
         parsed_message = message.content[len(channel_settings.prefix):].split(' ')
+        author = message.author
         command_key = parsed_message.pop(0)
         command = self._commands.get(command_key)
         if not command:
             raise ValueError(f'Unknown command \"{command_key}\"')
-        await command.function(channel_settings, parsed_message)
+        await command.function(channel_settings, parsed_message, author)
 
     def join_guild(self, guild_id: int, channel_id: int, channel: discord.TextChannel):
         """
@@ -141,7 +145,7 @@ class DiscordBot:
         """
         self._client.run(token)
 
-    async def set_prefix(self, channel_settings: Channel, parsed_message: list[str]):
+    async def set_prefix(self, channel_settings: Channel, parsed_message: list[str], _):
         """
         Changes the message prefix for the given channel.
         """
@@ -150,7 +154,29 @@ class DiscordBot:
         channel_settings.prefix = prefix
         await channel_settings.send(f'Changed prefix to {prefix}')
 
-    async def help_str(self, channel_settings: Channel, _):
+    async def set_system(self, channel_settings: Channel, parsed_message: list[str], _):
+        """
+        Sets the roleplaying system for given channel.
+        """
+        system_key = parsed_message[0]
+        channel_settings.system = SYSTEMS[system_key]()
+        self._logger.info(f'{channel_settings} is set for {system_key}.')
+        await channel_settings.send(f'This is now a {system_key} channel.')
+
+    async def character(self, channel_settings: Channel, parsed_message: list[str], author: str):
+        """
+        Creates a character sheet for a player
+        """
+        try:
+            assert channel_settings.system is not None
+        except AssertionError:
+            await channel_settings.send('Can\'t create character before selecting a roleplaying system.')
+            return
+        channel_settings.characters[author] = channel_settings.system.character_sheet(parsed_message)
+        self._logger.info(f'Created character for {author}.')
+        await channel_settings.send(f'{author}, your character is {channel_settings.characters[author].name}')
+
+    async def help_str(self, channel_settings: Channel, *_):
         """
         Sends a help message to the requesting channel, containing a list of commands.
         """

@@ -29,7 +29,6 @@ class Dnd5eCheckMod(Enum):
 # UTILITY CLASSES
 ############################################
 
-
 class Stat:
     def __init__(self, score: int):
         self.score = score
@@ -52,10 +51,47 @@ class Skill:
                 prof_multiplier += 1
         return self.stat.modifier + (prof_bonus * prof_multiplier)
 
+STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha']
+SKILLS = {
+    'acrobatics': 'dex',
+    'animal handling': 'wis',
+    'arcana': 'int',
+    'athletics': 'str',
+    'deception': 'cha',
+    'history': 'int',
+    'insight': 'wis',
+    'intimidation': 'cha',
+    'investigation': 'int',
+    'medicine': 'wis',
+    'nature': 'int',
+    'perception': 'wis',
+    'performance': 'cha',
+    'persuasion': 'cha',
+    'religion': 'int',
+    'sleight of hand': 'dex',
+    'stealth': 'dex',
+    'survival': 'wis'
+}
+
 
 class Dnd5ECharacterSheet(CharacterSheet):
-    ...
+    def __init__(self, name: str, level: int, stat_scores: list[int], proficiencies: list[str], expertise: list[str] = None):
+        assert len(stat_scores) == len(STATS) and all([1 <= stat <= 20 for stat in stat_scores])
+        self._stats = {stat: Stat(score) for stat, score in zip(STATS, stat_scores)}
+        self.name = name
+        self.level = level
+        modifiers: dict[str, SkillModifier] = {skill: SkillModifier(0) for skill in SKILLS.keys()}
+        for skill in proficiencies:
+            modifiers[skill] |= SkillModifier.PROFICIENCY
+        if expertise:
+            for skill in expertise:
+                assert skill in proficiencies
+                modifiers[skill] |= SkillModifier.EXPERTISE
+        self._skills = {skill: Skill(self._stats[stat], modifiers[skill]) for skill, stat in SKILLS.items()}
 
+    @property
+    def proficiency_modifier(self):
+        return 2 + (self.level - 1) // 4
 
 class Dnd5e(RolePlayingSystem):
     def check(self, stat: int = 0, check_mod: Dnd5eCheckMod = Dnd5eCheckMod.NONE) -> int:
@@ -74,8 +110,12 @@ class Dnd5e(RolePlayingSystem):
     def roll(desc: str) -> int:
         ...
 
-    def character_sheet(self) -> Dnd5ECharacterSheet:
-        ...
+    def character_sheet(self, args_list: list[str]) -> Dnd5ECharacterSheet:
+        name = args_list.pop(0)
+        level = int(args_list.pop(0))
+        stats = [int(stat) for stat in args_list[0:len(STATS)]]
+        proficiencies = [prof for prof in args_list[len(STATS): args_list.index('EXPERTISE') if 'EXPERTISE' in args_list else len(args_list)]]
+        return Dnd5ECharacterSheet(name, level, stats, proficiencies)
 
     def __str__(self) -> str:
         return 'Dungeons and Dragons 5th Edition'
