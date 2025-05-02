@@ -1,6 +1,8 @@
 from rollbot.src.system.system_base import CharacterSheet, RolePlayingSystem, Die, roll_die
 from enum import Enum, Flag, auto
 
+import re
+
 ############################################
 # CONSTANTS
 ############################################
@@ -13,6 +15,19 @@ d10 = Die(1, 10)
 d00 = Die(1, 100)
 d12 = Die(1, 12)
 d20 = Die(1, 20)
+
+DICE_DICT = {
+    '4': d4,
+    '6': d6,
+    '8': d8,
+    '10': d10,
+    '12': d12,
+    '20': d20,
+    '%': d00,
+    '100': d00
+}
+
+DICE_ROLL_REGEX = r"(?P<Times>\d*)d(?P<Dice>4|6|8|10|12|20|%|100)"
 
 
 class SkillModifier(Flag):
@@ -116,7 +131,17 @@ class Dnd5e(RolePlayingSystem):
 
     @staticmethod
     def roll(desc: str) -> int:
-        ...
+        processed_desc = re.match(DICE_ROLL_REGEX, desc)
+        if not processed_desc:
+            raise ValueError(f"Bad dice roll description {desc}")
+        die, rolls = DICE_DICT[processed_desc['Dice']], processed_desc['Times']
+        if not rolls:
+            rolls = 1
+        roll_sum = 0
+        for roll in range(rolls):
+            roll_sum += roll_die(die)
+
+        return roll_sum
 
     def character_sheet(self, args_list: list[str]) -> Dnd5ECharacterSheet:
         name = args_list.pop(0)
