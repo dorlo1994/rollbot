@@ -100,19 +100,9 @@ class DiscordBot:
         """
         message_metadata = message.to_message_reference_dict()
         guild_id, channel_id = message_metadata['guild_id'], message_metadata['channel_id']
-
-        # Ensure the message comes from a known channel
-        if guild_id not in self._guilds.keys():
-            # Handle joining a guild
-            channel_obj = message.channel
-            self.join_guild(guild_id, channel_id, channel_obj)
-        elif channel_id not in self._guilds[guild_id].keys():
-            # Handle joining a new channel in an existing server
-            channel_obj = message.channel
-            self.join_channel(guild_id, channel_id, channel_obj)
+        channel_settings = self._validate_channel(guild_id, channel_id, message.channel)
 
         # If message is not a rollbot command, stop message handling.
-        channel_settings = self._guilds[guild_id][channel_id]
         if not message.content.startswith(channel_settings.prefix):
             return
 
@@ -124,6 +114,16 @@ class DiscordBot:
         if not command:
             raise ValueError(f'Unknown command \"{command_key}\"')
         await command.function(channel_settings, parsed_message, author)
+
+    def _validate_channel(self, guild_id: int, channel_id: int, channel_obj: discord.TextChannel):
+        # Ensure the message comes from a known channel
+        if guild_id not in self._guilds.keys():
+            # Handle joining a guild
+            self.join_guild(guild_id, channel_id, channel_obj)
+        elif channel_id not in self._guilds[guild_id].keys():
+            # Handle joining a new channel in an existing server
+            self.join_channel(guild_id, channel_id, channel_obj)
+        return self._guilds[guild_id][channel_id]
 
     def join_guild(self, guild_id: int, channel_id: int, channel: discord.TextChannel):
         """
