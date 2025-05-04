@@ -40,6 +40,11 @@ class Dnd5eCheckMod(Enum):
     ADVANTAGE = 1
     DISADVANTAGE = 2
 
+CHECK_MODS: dict[str, Dnd5eCheckMod] = {
+    'advantage': Dnd5eCheckMod.ADVANTAGE,
+    'disadvantage': Dnd5eCheckMod.DISADVANTAGE
+}
+
 ############################################
 # UTILITY CLASSES
 ############################################
@@ -108,6 +113,10 @@ class Dnd5ECharacterSheet(CharacterSheet):
     def proficiency_modifier(self):
         return 2 + (self.level - 1) // 4
 
+    def skill_score(self, skill):
+        assert skill in SKILLS.keys()
+        return self._skills[skill].score(self.proficiency_modifier)
+
     def __repr__(self):
         character_str: str = ''
         character_str += f'Name: {self.name}\n'
@@ -117,17 +126,22 @@ class Dnd5ECharacterSheet(CharacterSheet):
 
 class Dnd5e(RolePlayingSystem):
     EXP = 'EXPERTISE'
-    def check(self, stat: int = 0, check_mod: Dnd5eCheckMod = Dnd5eCheckMod.NONE) -> int:
-        roll = roll_die(d20) + stat
+
+    def check(self, character: Dnd5ECharacterSheet, skill: str, check_str: str = None) -> int:
+        score = character.skill_score(skill)
+        roll_result = roll_die(d20) + score
+        check_mod: Dnd5eCheckMod = Dnd5eCheckMod.NONE
+        if check_str:
+            check_mod: Dnd5eCheckMod = CHECK_MODS.get(check_str, Dnd5eCheckMod.NONE)
         if check_mod == Dnd5eCheckMod.NONE:
-            return roll
-        alt_roll = roll_die(d20) + stat
+            return roll_result
+        alt_roll = roll_die(d20) + score
         if check_mod == Dnd5eCheckMod.ADVANTAGE:
-            return max(roll, alt_roll)
+            return max(roll_result, alt_roll)
         elif check_mod == Dnd5eCheckMod.DISADVANTAGE:
-            return min(roll, alt_roll)
+            return min(roll_result, alt_roll)
         else:
-            raise ValueError(f'Unknown roll modifier {check_mod}')
+            raise ValueError(f'Got unknown Dnd5eCheckMod: {check_mod}')
 
     @staticmethod
     def roll(desc: str) -> int:

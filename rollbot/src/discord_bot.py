@@ -65,6 +65,7 @@ class DiscordBot:
             'system': Command(f'Set the roleplaying system for this channel. Available systems are: {"\n\t".join(SYSTEMS.keys())}', self.set_system),
             'character': Command('Create character sheet', self.character),
             'my_character': Command('Print your character sheet', self.my_character),
+            'check': Command('Performs a skill check', self.check)
         }
         self._initialize_client()
 
@@ -180,6 +181,11 @@ class DiscordBot:
     async def my_character(self, channel_settings: Channel, parsed_message: list[str], author: str):
         character = channel_settings.characters[author]
         await channel_settings.send(character)
+
+    async def check(self, channel_settings: Channel, parsed_message: list[str], author: str):
+        character = channel_settings.characters[author]
+        roll = channel_settings.system.check(character, *parsed_message)
+        await channel_settings.send(f'You rolled {roll}')
 
     async def help_str(self, channel_settings: Channel, *_):
         """
